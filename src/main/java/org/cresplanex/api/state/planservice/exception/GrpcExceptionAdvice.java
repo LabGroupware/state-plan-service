@@ -1,0 +1,69 @@
+package org.cresplanex.api.state.planservice.exception;
+
+import build.buf.gen.plan.v1.*;
+import io.grpc.Status;
+import net.devh.boot.grpc.server.advice.GrpcAdvice;
+import net.devh.boot.grpc.server.advice.GrpcExceptionHandler;
+
+@GrpcAdvice
+public class GrpcExceptionAdvice {
+
+     @GrpcExceptionHandler(PlanNotFoundException.class)
+     public Status handlePlanNotFoundException(PlanNotFoundException e) {
+        PlanServicePlanNotFoundError.Builder descriptionBuilder =
+                PlanServicePlanNotFoundError.newBuilder()
+                .setMeta(buildErrorMeta(e));
+
+        switch (e.getFindType()) {
+            case BY_ID:
+                descriptionBuilder
+                        .setFindFieldType(PlanUniqueFieldType.PLAN_UNIQUE_FIELD_TYPE_PLAN_ID)
+                        .setPlanId(e.getAggregateId());
+                break;
+        }
+
+         return Status.NOT_FOUND
+                 .withDescription(descriptionBuilder.build().toString())
+                 .withCause(e);
+     }
+
+    @GrpcExceptionHandler(TaskNotFoundException.class)
+    public Status handleTaskNotFoundException(TaskNotFoundException e) {
+        PlanServiceTaskNotFoundError.Builder descriptionBuilder =
+                PlanServiceTaskNotFoundError.newBuilder()
+                        .setMeta(buildErrorMeta(e));
+
+        switch (e.getFindType()) {
+            case BY_ID:
+                descriptionBuilder
+                        .setFindFieldType(TaskUniqueFieldType.TASK_UNIQUE_FIELD_TYPE_TASK_ID)
+                        .setTaskId(e.getAggregateId());
+                break;
+        }
+
+        return Status.NOT_FOUND
+                .withDescription(descriptionBuilder.build().toString())
+                .withCause(e);
+    }
+
+     private PlanServiceErrorMeta buildErrorMeta(ServiceException e) {
+         return PlanServiceErrorMeta.newBuilder()
+                 .setCode(e.getServiceErrorCode())
+                 .setMessage(e.getErrorCaption())
+                 .build();
+     }
+
+    @GrpcExceptionHandler
+    public Status handleInternal(Throwable e) {
+         PlanServiceInternalError.Builder descriptionBuilder =
+                 PlanServiceInternalError.newBuilder()
+                         .setMeta(PlanServiceErrorMeta.newBuilder()
+                                 .setCode(PlanServiceErrorCode.PLAN_SERVICE_ERROR_CODE_INTERNAL)
+                                 .setMessage(e.getMessage())
+                                 .build());
+
+         return Status.INTERNAL
+                 .withDescription(descriptionBuilder.build().toString())
+                 .withCause(e);
+    }
+}
