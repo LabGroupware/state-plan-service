@@ -87,31 +87,6 @@ public class TaskService extends BaseService {
         return jobId;
     }
 
-    public void validateCreatedTask(
-            String teamId,
-            String chargeUserId,
-            String title,
-            String description,
-            String startDatetime,
-            String dueDatetime)
-            throws InvalidStartDateTimeException, InvalidDueDateTimeException, StartTimeMustBeEarlierDueTimeException {
-        LocalDateTime startTimestamp;
-        try {
-            startTimestamp = LocalDateTime.parse(startDatetime);
-        } catch (Exception e) {
-            throw new InvalidStartDateTimeException(startDatetime);
-        }
-        LocalDateTime dueTimestamp;
-        try {
-            dueTimestamp = LocalDateTime.parse(dueDatetime);
-        } catch (Exception e) {
-            throw new InvalidDueDateTimeException(dueDatetime);
-        }
-        if (startTimestamp.isAfter(dueTimestamp)) {
-            throw new StartTimeMustBeEarlierDueTimeException(startTimestamp, dueTimestamp);
-        }
-    }
-
     public TaskEntity createAndAttacheFiles(String operatorId, TaskEntity task) {
         return taskRepository.save(task);
     }
@@ -123,16 +98,6 @@ public class TaskService extends BaseService {
                         taskId
                 ));
         taskRepository.delete(task);
-    }
-
-    public void validateTasks(List<String> taskIds)
-            throws org.cresplanex.api.state.common.saga.local.plan.NotFoundTaskException {
-        taskRepository.countByTaskIdIn(taskIds)
-                .ifPresent(count -> {
-                    if (count != taskIds.size()) {
-                        throw new org.cresplanex.api.state.common.saga.local.plan.NotFoundTaskException(taskIds);
-                    }
-                });
     }
 
     @Transactional

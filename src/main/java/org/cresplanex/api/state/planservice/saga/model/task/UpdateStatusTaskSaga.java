@@ -16,7 +16,7 @@ import org.cresplanex.api.state.planservice.saga.proxy.PlanServiceProxy;
 import org.cresplanex.api.state.planservice.saga.proxy.TeamServiceProxy;
 import org.cresplanex.api.state.planservice.saga.proxy.UserProfileServiceProxy;
 import org.cresplanex.api.state.planservice.saga.state.task.UpdateStatusTaskSagaState;
-import org.cresplanex.api.state.planservice.service.TaskService;
+import org.cresplanex.api.state.planservice.service.TaskLocalValidateService;
 import org.cresplanex.core.saga.orchestration.SagaDefinition;
 import org.springframework.stereotype.Component;
 
@@ -31,10 +31,10 @@ public class UpdateStatusTaskSaga extends SagaModel<
 
     private final SagaDefinition<UpdateStatusTaskSagaState> sagaDefinition;
     private final TaskDomainEventPublisher domainEventPublisher;
-    private final TaskService organizationLocalService;
+    private final TaskLocalValidateService organizationLocalService;
 
     public UpdateStatusTaskSaga(
-            TaskService organizationLocalService,
+            TaskLocalValidateService organizationLocalService,
             PlanServiceProxy organizationService,
             TeamServiceProxy teamService,
             UserProfileServiceProxy userProfileService,

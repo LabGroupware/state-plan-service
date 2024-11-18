@@ -22,7 +22,7 @@ import org.cresplanex.api.state.planservice.saga.proxy.StorageServiceProxy;
 import org.cresplanex.api.state.planservice.saga.proxy.TeamServiceProxy;
 import org.cresplanex.api.state.planservice.saga.proxy.UserProfileServiceProxy;
 import org.cresplanex.api.state.planservice.saga.state.task.CreateTaskSagaState;
-import org.cresplanex.api.state.planservice.service.TaskService;
+import org.cresplanex.api.state.planservice.service.TaskLocalValidateService;
 import org.cresplanex.core.saga.orchestration.SagaDefinition;
 import org.cresplanex.api.state.common.saga.reply.userprofile.UserExistValidateReply;
 import org.springframework.stereotype.Component;
@@ -36,10 +36,10 @@ public class CreateTaskSaga extends SagaModel<
 
     private final SagaDefinition<CreateTaskSagaState> sagaDefinition;
     private final TaskDomainEventPublisher domainEventPublisher;
-    private final TaskService taskLocalService;
+    private final TaskLocalValidateService taskLocalService;
 
     public CreateTaskSaga(
-            TaskService taskLocalService,
+            TaskLocalValidateService taskLocalService,
             PlanServiceProxy taskService,
             StorageServiceProxy storageService,
             TeamServiceProxy teamService,
