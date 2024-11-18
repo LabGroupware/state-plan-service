@@ -1,6 +1,6 @@
 package org.cresplanex.api.state.planservice.handler;
 
-import build.buf.gen.organization.v1.*;
+import build.buf.gen.plan.v1.*;
 import org.cresplanex.api.state.planservice.entity.TaskEntity;
 import org.cresplanex.api.state.planservice.entity.TaskAttachmentEntity;
 import org.cresplanex.api.state.planservice.mapper.proto.ProtoMapper;
@@ -8,23 +8,25 @@ import org.cresplanex.api.state.planservice.mapper.proto.ProtoMapper;
 import io.grpc.stub.StreamObserver;
 import lombok.RequiredArgsConstructor;
 import net.devh.boot.grpc.server.service.GrpcService;
-import org.cresplanex.api.state.planservice.service.OrganizationService;
+import org.cresplanex.api.state.planservice.service.TaskService;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 @RequiredArgsConstructor
 @GrpcService
-public class PlanServiceHandler extends OrganizationServiceGrpc.OrganizationServiceImplBase {
+public class PlanServiceHandler extends PlanServiceGrpc.PlanServiceImplBase {
 
-    private final OrganizationService organizationService;
+    private final TaskService taskService;
 
     @Override
-    public void findOrganization(FindOrganizationRequest request, StreamObserver<FindOrganizationResponse> responseObserver) {
-        TaskEntity organization = organizationService.findById(request.getOrganizationId());
+    public void findTask(FindTaskRequest request, StreamObserver<FindTaskResponse> responseObserver) {
+        TaskEntity task = taskService.findById(request.getTaskId());
 
-        Organization organizationProto = ProtoMapper.convert(organization);
-        FindOrganizationResponse response = FindOrganizationResponse.newBuilder()
-                .setOrganization(organizationProto)
+        Task taskProto = ProtoMapper.convert(task);
+        FindTaskResponse response = FindTaskResponse.newBuilder()
+                .setTask(taskProto)
                 .build();
 
         responseObserver.onNext(response);
@@ -33,13 +35,13 @@ public class PlanServiceHandler extends OrganizationServiceGrpc.OrganizationServ
 
     // TODO: pagination + with count
     @Override
-    public void getOrganizations(GetOrganizationsRequest request, StreamObserver<GetOrganizationsResponse> responseObserver) {
-        List<TaskEntity> organizations = organizationService.get();
+    public void getTasks(GetTasksRequest request, StreamObserver<GetTasksResponse> responseObserver) {
+        List<TaskEntity> tasks = taskService.get();
 
-        List<Organization> organizationProtos = organizations.stream()
+        List<Task> taskProtos = tasks.stream()
                 .map(ProtoMapper::convert).toList();
-        GetOrganizationsResponse response = GetOrganizationsResponse.newBuilder()
-                .addAllOrganizations(organizationProtos)
+        GetTasksResponse response = GetTasksResponse.newBuilder()
+                .addAllTasks(taskProtos)
                 .build();
 
         responseObserver.onNext(response);
@@ -47,21 +49,25 @@ public class PlanServiceHandler extends OrganizationServiceGrpc.OrganizationServ
     }
 
     @Override
-    public void createOrganization(CreateOrganizationRequest request, StreamObserver<CreateOrganizationResponse> responseObserver) {
+    public void createTask(CreateTaskRequest request, StreamObserver<CreateTaskResponse> responseObserver) {
         String operatorId = request.getOperatorId();
-        TaskEntity organization = new TaskEntity();
-        organization.setName(request.getName());
-        organization.setPlan(request.getPlan());
-        List<TaskAttachmentEntity> users = request.getUsersList().stream()
-                .map(user -> {
-                    TaskAttachmentEntity userEntity = new TaskAttachmentEntity();
-                    userEntity.setUserId(user.getUserId());
-                    return userEntity;
+        TaskEntity task = new TaskEntity();
+        task.setTeamId(request.getTeamId());
+        task.setChargeUserId(request.getChargeUserId());
+        task.setTitle(request.getTitle());
+        task.setDescription(request.getDescription());
+        task.setStartDatetime(LocalDateTime.parse(request.getStartDatetime(), DateTimeFormatter.ISO_DATE_TIME));
+        task.setDueDatetime(LocalDateTime.parse(request.getDueDatetime(), DateTimeFormatter.ISO_DATE_TIME));
+        List<TaskAttachmentEntity> attachmentEntities = request.getAttachmentsList().stream()
+                .map(attachment -> {
+                    TaskAttachmentEntity attachmentEntity = new TaskAttachmentEntity();
+                    attachmentEntity.setFileObjectId(attachment.getFileObjectId());
+                    return attachmentEntity;
                 })
                 .toList();
 
-        String jobId = organizationService.beginCreate(operatorId, organization, users);
-        CreateOrganizationResponse response = CreateOrganizationResponse.newBuilder()
+        String jobId = taskService.beginCreate(operatorId, task, attachmentEntities);
+        CreateTaskResponse response = CreateTaskResponse.newBuilder()
                 .setJobId(jobId)
                 .build();
 
@@ -70,19 +76,13 @@ public class PlanServiceHandler extends OrganizationServiceGrpc.OrganizationServ
     }
 
     @Override
-    public void addOrganizationUser(AddOrganizationUserRequest request, StreamObserver<AddOrganizationUserResponse> responseObserver) {
+    public void updateTaskStatus(UpdateTaskStatusRequest request, StreamObserver<UpdateTaskStatusResponse> responseObserver) {
         String operatorId = request.getOperatorId();
-        String organizationId = request.getOrganizationId();
-        List<TaskAttachmentEntity> users = request.getUsersList().stream()
-                .map(user -> {
-                    TaskAttachmentEntity userEntity = new TaskAttachmentEntity();
-                    userEntity.setUserId(user.getUserId());
-                    return userEntity;
-                })
-                .toList();
+        String taskId = request.getTaskId();
+        String status = request.getStatus();
 
-        String jobId = organizationService.beginAddUsers(operatorId, organizationId, users);
-        AddOrganizationUserResponse response = AddOrganizationUserResponse.newBuilder()
+        String jobId = taskService.beginUpdateStatus(operatorId, taskId, status);
+        UpdateTaskStatusResponse response = UpdateTaskStatusResponse.newBuilder()
                 .setJobId(jobId)
                 .build();
 
