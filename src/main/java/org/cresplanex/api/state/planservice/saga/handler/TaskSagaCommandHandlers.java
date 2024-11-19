@@ -96,14 +96,13 @@ public class TaskSagaCommandHandlers {
             task.setDescription(command.getDescription());
             task.setStartDatetime(LocalDateTime.parse(command.getStartDatetime(), DateTimeFormatter.ISO_LOCAL_DATE_TIME));
             task.setDueDatetime(LocalDateTime.parse(command.getDueDatetime(), DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+            task.setStatus(TaskStatus.DEFAULT);
             List<TaskAttachmentEntity> attachments = command.getAttachmentFileObjectIds().stream().map(attachment -> {
                 TaskAttachmentEntity attachmentEntity = new TaskAttachmentEntity();
                 attachmentEntity.setFileObjectId(attachment.getFileObjectId());
                 return attachmentEntity;
             }).toList();
-            task.setTaskAttachments(attachments);
-            task.setStatus(TaskStatus.DEFAULT);
-            task = taskService.createAndAttacheFiles(command.getOperatorId(), task);
+            task = taskService.createAndAttacheFiles(command.getOperatorId(), task, attachments);
             CreateTaskAndAttachInitialFIleObjectsReply.Success reply = new CreateTaskAndAttachInitialFIleObjectsReply.Success(
                     new CreateTaskAndAttachInitialFIleObjectsReply.Success.Data(
                             DtoMapper.convert(task),

@@ -3,9 +3,6 @@ package org.cresplanex.api.state.planservice.service;
 import lombok.extern.slf4j.Slf4j;
 import org.cresplanex.api.state.common.entity.EntityWithPrevious;
 import org.cresplanex.api.state.common.saga.local.LocalException;
-import org.cresplanex.api.state.common.saga.local.plan.InvalidDueDateTimeException;
-import org.cresplanex.api.state.common.saga.local.plan.InvalidStartDateTimeException;
-import org.cresplanex.api.state.common.saga.local.plan.StartTimeMustBeEarlierDueTimeException;
 import org.cresplanex.api.state.common.service.BaseService;
 import org.cresplanex.api.state.planservice.entity.TaskEntity;
 import org.cresplanex.api.state.planservice.entity.TaskAttachmentEntity;
@@ -22,7 +19,6 @@ import org.springframework.stereotype.Service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
@@ -87,8 +83,15 @@ public class TaskService extends BaseService {
         return jobId;
     }
 
-    public TaskEntity createAndAttacheFiles(String operatorId, TaskEntity task) {
-        return taskRepository.save(task);
+    public TaskEntity createAndAttacheFiles(String operatorId, TaskEntity task, List<TaskAttachmentEntity> attachments) {
+        task = taskRepository.save(task);
+        TaskEntity finalTask = task;
+        attachments = attachments.stream()
+                .peek(attachment -> attachment.setTask(finalTask))
+                .toList();
+        taskAttachmentRepository.saveAll(attachments);
+        task.setTaskAttachments(attachments);
+        return task;
     }
 
     public void undoCreate(String taskId) {
