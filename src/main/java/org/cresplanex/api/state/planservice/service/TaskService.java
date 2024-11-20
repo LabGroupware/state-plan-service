@@ -2,18 +2,28 @@ package org.cresplanex.api.state.planservice.service;
 
 import lombok.extern.slf4j.Slf4j;
 import org.cresplanex.api.state.common.entity.EntityWithPrevious;
+import org.cresplanex.api.state.common.entity.ListEntityWithCount;
+import org.cresplanex.api.state.common.enums.PaginationType;
 import org.cresplanex.api.state.common.saga.local.LocalException;
 import org.cresplanex.api.state.common.service.BaseService;
 import org.cresplanex.api.state.planservice.entity.TaskEntity;
 import org.cresplanex.api.state.planservice.entity.TaskAttachmentEntity;
+import org.cresplanex.api.state.planservice.enums.FileObjectOnTaskSortType;
+import org.cresplanex.api.state.planservice.enums.TaskOnFileObjectSortType;
+import org.cresplanex.api.state.planservice.enums.TaskSortType;
+import org.cresplanex.api.state.planservice.enums.TaskWithFileObjectsSortType;
 import org.cresplanex.api.state.planservice.exception.TaskNotFoundException;
+import org.cresplanex.api.state.planservice.filter.task.*;
 import org.cresplanex.api.state.planservice.repository.TaskRepository;
 import org.cresplanex.api.state.planservice.repository.TaskAttachmentRepository;
 import org.cresplanex.api.state.planservice.saga.model.task.UpdateStatusTaskSaga;
 import org.cresplanex.api.state.planservice.saga.model.task.CreateTaskSaga;
 import org.cresplanex.api.state.planservice.saga.state.task.UpdateStatusTaskSagaState;
 import org.cresplanex.api.state.planservice.saga.state.task.CreateTaskSagaState;
+import org.cresplanex.api.state.planservice.specification.TaskSpecifications;
 import org.cresplanex.core.saga.orchestration.SagaInstanceFactory;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import lombok.RequiredArgsConstructor;
@@ -39,6 +49,15 @@ public class TaskService extends BaseService {
         return internalFindById(taskId);
     }
 
+    @Transactional(readOnly = true)
+    public TaskEntity findByIdWithAttachments(String taskId) {
+        return taskRepository.findByIdWithAttachments(taskId)
+                .orElseThrow(() -> new TaskNotFoundException(
+                        TaskNotFoundException.FindType.BY_ID,
+                        taskId
+                ));
+    }
+
     private TaskEntity internalFindById(String taskId) {
         return taskRepository.findById(taskId).orElseThrow(() -> new TaskNotFoundException(
                 TaskNotFoundException.FindType.BY_ID,
@@ -47,8 +66,151 @@ public class TaskService extends BaseService {
     }
 
     @Transactional(readOnly = true)
-    public List<TaskEntity> get() {
-        return taskRepository.findAll();
+    public ListEntityWithCount<TaskEntity> get(
+            PaginationType paginationType,
+            int limit,
+            int offset,
+            String cursor,
+            TaskSortType sortType,
+            boolean withCount,
+            TeamFilter teamFilter,
+            StatusFilter statusFilter,
+            ChargeUserFilter chargeUserFilter,
+            FileObjectsFilter fileObjectsFilter,
+            StartDatetimeFilter startDatetimeFilter,
+            DueDatetimeFilter dueDatetimeFilter
+    ) {
+        Specification<TaskEntity> spec = Specification.where(
+                TaskSpecifications.withTeamFilter(teamFilter)
+                        .and(TaskSpecifications.withStatusFilter(statusFilter))
+                        .and(TaskSpecifications.withChargeUserFilter(chargeUserFilter))
+                        .and(TaskSpecifications.withAttachmentFileObjectsFilter(fileObjectsFilter))
+                        .and(TaskSpecifications.withStartDatetimeFilter(startDatetimeFilter))
+                        .and(TaskSpecifications.withDueDatetimeFilter(dueDatetimeFilter))
+        );
+
+        List<TaskEntity> data = switch (paginationType) {
+            case OFFSET ->
+                    taskRepository.findList(spec, sortType, PageRequest.of(offset / limit, limit));
+            case CURSOR -> taskRepository.findList(spec, sortType); // TODO: Implement cursor pagination
+            default -> taskRepository.findList(spec, sortType);
+        };
+
+        int count = 0;
+        if (withCount){
+            count = taskRepository.countList(spec);
+        }
+        return new ListEntityWithCount<>(
+                data,
+                count
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public ListEntityWithCount<TaskEntity> getWithAttachments(
+            PaginationType paginationType,
+            int limit,
+            int offset,
+            String cursor,
+            TaskWithFileObjectsSortType sortType,
+            boolean withCount,
+            TeamFilter teamFilter,
+            StatusFilter statusFilter,
+            ChargeUserFilter chargeUserFilter,
+            FileObjectsFilter fileObjectsFilter,
+            StartDatetimeFilter startDatetimeFilter,
+            DueDatetimeFilter dueDatetimeFilter
+    ) {
+        Specification<TaskEntity> spec = Specification.where(
+                TaskSpecifications.withTeamFilter(teamFilter)
+                        .and(TaskSpecifications.withStatusFilter(statusFilter))
+                        .and(TaskSpecifications.withChargeUserFilter(chargeUserFilter))
+                        .and(TaskSpecifications.withAttachmentFileObjectsFilter(fileObjectsFilter))
+                        .and(TaskSpecifications.withStartDatetimeFilter(startDatetimeFilter))
+                        .and(TaskSpecifications.withDueDatetimeFilter(dueDatetimeFilter))
+        );
+
+        List<TaskEntity> data = switch (paginationType) {
+            case OFFSET ->
+                    taskRepository.findListWithAttachments(spec, sortType, PageRequest.of(offset / limit, limit));
+            case CURSOR -> taskRepository.findListWithAttachments(spec, sortType); // TODO: Implement cursor pagination
+            default -> taskRepository.findListWithAttachments(spec, sortType);
+        };
+
+        int count = 0;
+        if (withCount){
+            count = taskRepository.countList(spec);
+        }
+        return new ListEntityWithCount<>(
+                data,
+                count
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public ListEntityWithCount<TaskAttachmentEntity> getFileObjectsOnTask(
+            String taskId,
+            PaginationType paginationType,
+            int limit,
+            int offset,
+            String cursor,
+            FileObjectOnTaskSortType sortType,
+            boolean withCount
+    ) {
+        Specification<TaskEntity> spec = Specification.where(null);
+
+        List<TaskAttachmentEntity> data = switch (paginationType) {
+            case OFFSET ->
+                    taskAttachmentRepository.findFileObjectsListOnTaskWithOffsetPagination(spec, taskId, sortType, PageRequest.of(offset / limit, limit));
+            case CURSOR -> taskAttachmentRepository.findFileObjectsListOnTask(spec, taskId, sortType); // TODO: Implement cursor pagination
+            default -> taskAttachmentRepository.findFileObjectsListOnTask(spec, taskId, sortType);
+        };
+
+        int count = 0;
+        if (withCount){
+            count = taskAttachmentRepository.countFileObjectsListOnTask(spec, taskId);
+        }
+        return new ListEntityWithCount<>(
+                data,
+                count
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public ListEntityWithCount<TaskAttachmentEntity> getTasksOnFileObject(
+            String fileObjectId,
+            PaginationType paginationType,
+            int limit,
+            int offset,
+            String cursor,
+            TaskOnFileObjectSortType sortType,
+            boolean withCount
+    ) {
+        Specification<TaskEntity> spec = Specification.where(null);
+
+        List<TaskAttachmentEntity> data = switch (paginationType) {
+            case OFFSET ->
+                    taskAttachmentRepository.findTasksOnFileObjectWithOffsetPagination(spec, fileObjectId, sortType, PageRequest.of(offset / limit, limit));
+            case CURSOR -> taskAttachmentRepository.findTasksOnFileObject(spec, fileObjectId, sortType); // TODO: Implement cursor pagination
+            default -> taskAttachmentRepository.findTasksOnFileObject(spec, fileObjectId, sortType);
+        };
+
+        int count = 0;
+        if (withCount){
+            count = taskAttachmentRepository.countTasksOnFileObject(spec, fileObjectId);
+        }
+        return new ListEntityWithCount<>(
+                data,
+                count
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public List<TaskEntity> getByTaskIds(
+            List<String> taskIds,
+            TaskSortType sortType
+    ) {
+        return taskRepository.findListByTaskIds(taskIds, sortType);
     }
 
     @Transactional

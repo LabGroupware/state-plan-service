@@ -89,14 +89,7 @@ public class TaskSagaCommandHandlers {
             CommandMessage<CreateTaskAndAttachInitialFIleObjectsCommand.Exec> cmd) {
         try {
             CreateTaskAndAttachInitialFIleObjectsCommand.Exec command = cmd.getCommand();
-            TaskEntity task = new TaskEntity();
-            task.setTeamId(command.getTeamId());
-            task.setChargeUserId(command.getChargeUserId());
-            task.setTitle(command.getTitle());
-            task.setDescription(command.getDescription());
-            task.setStartDatetime(LocalDateTime.parse(command.getStartDatetime(), DateTimeFormatter.ISO_LOCAL_DATE_TIME));
-            task.setDueDatetime(LocalDateTime.parse(command.getDueDatetime(), DateTimeFormatter.ISO_LOCAL_DATE_TIME));
-            task.setStatus(TaskStatus.DEFAULT);
+            TaskEntity task = getTaskEntity(command);
             List<TaskAttachmentEntity> attachments = command.getAttachmentFileObjectIds().stream().map(attachment -> {
                 TaskAttachmentEntity attachmentEntity = new TaskAttachmentEntity();
                 attachmentEntity.setFileObjectId(attachment.getFileObjectId());
@@ -124,6 +117,18 @@ public class TaskSagaCommandHandlers {
             );
             return withException(reply, CreateTaskAndAttachInitialFIleObjectsReply.Failure.TYPE);
         }
+    }
+
+    private static TaskEntity getTaskEntity(CreateTaskAndAttachInitialFIleObjectsCommand.Exec command) {
+        TaskEntity task = new TaskEntity();
+        task.setTeamId(command.getTeamId());
+        task.setChargeUserId(command.getChargeUserId());
+        task.setTitle(command.getTitle());
+        task.setDescription(command.getDescription());
+        task.setStartDatetime(LocalDateTime.parse(command.getStartDatetime(), DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+        task.setDueDatetime(LocalDateTime.parse(command.getDueDatetime(), DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+        task.setStatus(TaskStatus.DEFAULT);
+        return task;
     }
 
     private Message handleUndoCreateTaskAndAttachInitialFIleObjectsCommand(

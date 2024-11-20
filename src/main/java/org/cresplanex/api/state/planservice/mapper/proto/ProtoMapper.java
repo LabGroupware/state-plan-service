@@ -1,7 +1,9 @@
 package org.cresplanex.api.state.planservice.mapper.proto;
 
+import build.buf.gen.organization.v1.OrganizationWithUsers;
 import build.buf.gen.plan.v1.FileObjectOnTask;
 import build.buf.gen.plan.v1.Task;
+import build.buf.gen.plan.v1.TaskOnFileObject;
 import build.buf.gen.plan.v1.TaskWithAttachments;
 import org.cresplanex.api.state.planservice.entity.TaskEntity;
 import org.cresplanex.api.state.planservice.entity.TaskAttachmentEntity;
@@ -40,6 +42,19 @@ public class ProtoMapper {
         return TaskWithAttachments.newBuilder()
                 .setTask(convert(taskEntity))
                 .addAllAttachments(convert(fileObjectOnTaskEntities))
+                .build();
+    }
+
+    public static TaskOnFileObject convertOnFileObject(TaskAttachmentEntity taskAttachmentEntity) {
+        return TaskOnFileObject.newBuilder()
+                .setTask(convert(taskAttachmentEntity.getTask()))
+                .build();
+    }
+
+    public static TaskWithAttachments convertWithFileObjects(TaskEntity taskEntity) {
+        return TaskWithAttachments.newBuilder()
+                .setTask(convert(taskEntity))
+                .addAllAttachments(convert(taskEntity.getTaskAttachments()))
                 .build();
     }
 }
