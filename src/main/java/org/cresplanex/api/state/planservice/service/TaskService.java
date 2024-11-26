@@ -213,6 +213,14 @@ public class TaskService extends BaseService {
         return taskRepository.findListByTaskIds(taskIds, sortType);
     }
 
+    @Transactional(readOnly = true)
+    public List<TaskEntity> getByTaskIdsWithAttachments(
+            List<String> taskIds,
+            TaskWithFileObjectsSortType sortType
+    ) {
+        return taskRepository.findListByTaskIdsWithAttachments(taskIds, sortType);
+    }
+
     @Transactional
     public String beginCreate(String operatorId, TaskEntity task, List<TaskAttachmentEntity> attachment) {
         CreateTaskSagaState.InitialData initialData = CreateTaskSagaState.InitialData.builder()

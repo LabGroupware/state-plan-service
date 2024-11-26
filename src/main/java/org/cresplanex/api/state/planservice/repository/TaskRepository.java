@@ -44,6 +44,17 @@ public interface TaskRepository extends JpaRepository<TaskEntity, String>, JpaSp
             "CASE WHEN :sortType = 'START_DATETIME_DESC' THEN o.startDatetime END DESC")
     List<TaskEntity> findListByTaskIds(List<String> taskIds, TaskSortType sortType);
 
+    @Query("SELECT o FROM TaskEntity o LEFT JOIN FETCH o.taskAttachments WHERE o.taskId IN :taskIds ORDER BY " +
+            "CASE WHEN :sortType = 'CREATED_AT_ASC' THEN o.createdAt END ASC, " +
+            "CASE WHEN :sortType = 'CREATED_AT_DESC' THEN o.createdAt END DESC, " +
+            "CASE WHEN :sortType = 'TITLE_ASC' THEN o.title END ASC, " +
+            "CASE WHEN :sortType = 'TITLE_DESC' THEN o.title END DESC, " +
+            "CASE WHEN :sortType = 'DUE_DATETIME_ASC' THEN o.dueDatetime END ASC, " +
+            "CASE WHEN :sortType = 'DUE_DATETIME_DESC' THEN o.dueDatetime END DESC, " +
+            "CASE WHEN :sortType = 'START_DATETIME_ASC' THEN o.startDatetime END ASC, " +
+            "CASE WHEN :sortType = 'START_DATETIME_DESC' THEN o.startDatetime END DESC")
+    List<TaskEntity> findListByTaskIdsWithAttachments(List<String> taskIds, TaskWithFileObjectsSortType sortType);
+
     @Query("SELECT o FROM TaskEntity o ORDER BY " +
             "CASE WHEN :sortType = 'CREATED_AT_ASC' THEN o.createdAt END ASC, " +
             "CASE WHEN :sortType = 'CREATED_AT_DESC' THEN o.createdAt END DESC, " +

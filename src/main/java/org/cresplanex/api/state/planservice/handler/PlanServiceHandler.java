@@ -214,6 +214,28 @@ public class PlanServiceHandler extends PlanServiceGrpc.PlanServiceImplBase {
         responseObserver.onCompleted();
     }
 
+    public void getPluralTasksWithAttachments(GetPluralTasksWithAttachmentsRequest request, StreamObserver<GetPluralTasksWithAttachmentsResponse> responseObserver) {
+        TaskWithFileObjectsSortType sortType = switch (request.getSort().getOrderField()) {
+            case TASK_WITH_ATTACHMENTS_ORDER_FIELD_TITLE -> (request.getSort().getOrder() == SortOrder.SORT_ORDER_ASC) ?
+                    TaskWithFileObjectsSortType.TITLE_ASC : TaskWithFileObjectsSortType.TITLE_DESC;
+            case TASK_WITH_ATTACHMENTS_ORDER_FIELD_START_DATETIME -> (request.getSort().getOrder() == SortOrder.SORT_ORDER_ASC) ?
+                    TaskWithFileObjectsSortType.START_DATETIME_ASC : TaskWithFileObjectsSortType.START_DATETIME_DESC;
+            case TASK_WITH_ATTACHMENTS_ORDER_FIELD_DUE_DATETIME -> (request.getSort().getOrder() == SortOrder.SORT_ORDER_ASC) ?
+                    TaskWithFileObjectsSortType.DUE_DATETIME_ASC : TaskWithFileObjectsSortType.DUE_DATETIME_DESC;
+            default -> (request.getSort().getOrder() == SortOrder.SORT_ORDER_ASC) ?
+                    TaskWithFileObjectsSortType.CREATED_AT_ASC : TaskWithFileObjectsSortType.CREATED_AT_DESC;
+        };
+        List<TaskWithAttachments> taskProtos = this.taskService.getByTaskIdsWithAttachments(
+                        request.getTaskIdsList(), sortType).stream()
+                .map(ProtoMapper::convertWithFileObjects).toList();
+        GetPluralTasksWithAttachmentsResponse response = GetPluralTasksWithAttachmentsResponse.newBuilder()
+                .addAllTasks(taskProtos)
+                .build();
+
+        responseObserver.onNext(response);
+        responseObserver.onCompleted();
+    }
+
     @Override
     public void getFileObjectsOnTask(GetFileObjectsOnTaskRequest request, StreamObserver<GetFileObjectsOnTaskResponse> responseObserver) {
         FileObjectOnTaskSortType sortType = switch (request.getSort().getOrderField()) {
