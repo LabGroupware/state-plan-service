@@ -23,6 +23,8 @@ import org.cresplanex.api.state.planservice.saga.state.task.CreateTaskSagaState;
 import org.cresplanex.api.state.planservice.specification.TaskSpecifications;
 import org.cresplanex.core.saga.orchestration.SagaInstanceFactory;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
@@ -89,12 +91,15 @@ public class TaskService extends BaseService {
                         .and(TaskSpecifications.withDueDatetimeFilter(dueDatetimeFilter))
         );
 
-        List<TaskEntity> data = switch (paginationType) {
-            case OFFSET ->
-                    taskRepository.findList(spec, sortType, PageRequest.of(offset / limit, limit));
-            case CURSOR -> taskRepository.findList(spec, sortType); // TODO: Implement cursor pagination
-            default -> taskRepository.findList(spec, sortType);
+        Sort sort = createSort(sortType);
+
+        Pageable pageable = switch (paginationType) {
+            case OFFSET -> PageRequest.of(offset / limit, limit, sort);
+            case CURSOR -> PageRequest.of(0, limit, sort); // TODO: Implement cursor pagination
+            default -> Pageable.unpaged(sort);
         };
+
+        List<TaskEntity> data = taskRepository.findList(spec, pageable);
 
         int count = 0;
         if (withCount){
@@ -130,12 +135,15 @@ public class TaskService extends BaseService {
                         .and(TaskSpecifications.withDueDatetimeFilter(dueDatetimeFilter))
         );
 
-        List<TaskEntity> data = switch (paginationType) {
-            case OFFSET ->
-                    taskRepository.findListWithAttachments(spec, sortType, PageRequest.of(offset / limit, limit));
-            case CURSOR -> taskRepository.findListWithAttachments(spec, sortType); // TODO: Implement cursor pagination
-            default -> taskRepository.findListWithAttachments(spec, sortType);
+        Sort sort = createSort(sortType);
+
+        Pageable pageable = switch (paginationType) {
+            case OFFSET -> PageRequest.of(offset / limit, limit, sort);
+            case CURSOR -> PageRequest.of(0, limit, sort); // TODO: Implement cursor pagination
+            default -> Pageable.unpaged(sort);
         };
+
+        List<TaskEntity> data = taskRepository.findListWithAttachments(spec, pageable);
 
         int count = 0;
         if (withCount){
@@ -157,18 +165,22 @@ public class TaskService extends BaseService {
             FileObjectOnTaskSortType sortType,
             boolean withCount
     ) {
-        Specification<TaskEntity> spec = Specification.where(null);
+        Specification<TaskAttachmentEntity> spec = (root, query, cb) ->
+                cb.equal(root.get("task").get("taskId"), taskId);
 
-        List<TaskAttachmentEntity> data = switch (paginationType) {
-            case OFFSET ->
-                    taskAttachmentRepository.findFileObjectsListOnTaskWithOffsetPagination(spec, taskId, sortType, PageRequest.of(offset / limit, limit));
-            case CURSOR -> taskAttachmentRepository.findFileObjectsListOnTask(spec, taskId, sortType); // TODO: Implement cursor pagination
-            default -> taskAttachmentRepository.findFileObjectsListOnTask(spec, taskId, sortType);
+        Sort sort = createSort(sortType);
+
+        Pageable pageable = switch (paginationType) {
+            case OFFSET -> PageRequest.of(offset / limit, limit, sort);
+            case CURSOR -> PageRequest.of(0, limit, sort); // TODO: Implement cursor pagination
+            default -> Pageable.unpaged(sort);
         };
+
+        List<TaskAttachmentEntity> data = taskAttachmentRepository.findList(spec, pageable);
 
         int count = 0;
         if (withCount){
-            count = taskAttachmentRepository.countFileObjectsListOnTask(spec, taskId);
+            count = taskAttachmentRepository.countList(spec);
         }
         return new ListEntityWithCount<>(
                 data,
@@ -186,18 +198,22 @@ public class TaskService extends BaseService {
             TaskOnFileObjectSortType sortType,
             boolean withCount
     ) {
-        Specification<TaskEntity> spec = Specification.where(null);
+        Specification<TaskAttachmentEntity> spec = (root, query, cb) ->
+                cb.equal(root.get("fileObjectId"), fileObjectId);
 
-        List<TaskAttachmentEntity> data = switch (paginationType) {
-            case OFFSET ->
-                    taskAttachmentRepository.findTasksOnFileObjectWithOffsetPagination(spec, fileObjectId, sortType, PageRequest.of(offset / limit, limit));
-            case CURSOR -> taskAttachmentRepository.findTasksOnFileObject(spec, fileObjectId, sortType); // TODO: Implement cursor pagination
-            default -> taskAttachmentRepository.findTasksOnFileObject(spec, fileObjectId, sortType);
+        Sort sort = createSort(sortType);
+
+        Pageable pageable = switch (paginationType) {
+            case OFFSET -> PageRequest.of(offset / limit, limit, sort);
+            case CURSOR -> PageRequest.of(0, limit, sort); // TODO: Implement cursor pagination
+            default -> Pageable.unpaged(sort);
         };
+
+        List<TaskAttachmentEntity> data = taskAttachmentRepository.findList(spec, pageable);
 
         int count = 0;
         if (withCount){
-            count = taskAttachmentRepository.countTasksOnFileObject(spec, fileObjectId);
+            count = taskAttachmentRepository.countList(spec);
         }
         return new ListEntityWithCount<>(
                 data,
@@ -210,7 +226,9 @@ public class TaskService extends BaseService {
             List<String> taskIds,
             TaskSortType sortType
     ) {
-        return taskRepository.findListByTaskIds(taskIds, sortType);
+        Specification<TaskEntity> spec = (root, query, cb) ->
+                root.get("taskId").in(taskIds);
+        return taskRepository.findList(spec, Pageable.unpaged(createSort(sortType)));
     }
 
     @Transactional(readOnly = true)
@@ -218,7 +236,9 @@ public class TaskService extends BaseService {
             List<String> taskIds,
             TaskWithFileObjectsSortType sortType
     ) {
-        return taskRepository.findListByTaskIdsWithAttachments(taskIds, sortType);
+        Specification<TaskEntity> spec = (root, query, cb) ->
+                root.get("taskId").in(taskIds);
+        return taskRepository.findListWithAttachments(spec, Pageable.unpaged(createSort(sortType)));
     }
 
     @Transactional
@@ -302,5 +322,53 @@ public class TaskService extends BaseService {
         TaskEntity existingTask = internalFindById(taskId);
         existingTask.setStatus(prevStatus);
         taskRepository.save(existingTask);
+    }
+
+    public Sort createSort(TaskSortType sortType) {
+        return switch (sortType) {
+            case CREATED_AT_ASC -> Sort.by(Sort.Order.asc("createdAt"));
+            case CREATED_AT_DESC -> Sort.by(Sort.Order.desc("createdAt"));
+            case TITLE_ASC -> Sort.by(Sort.Order.asc("title"), Sort.Order.desc("createdAt"));
+            case TITLE_DESC -> Sort.by(Sort.Order.desc("title"), Sort.Order.desc("createdAt"));
+            case START_DATETIME_ASC -> Sort.by(Sort.Order.asc("startDatetime"), Sort.Order.desc("createdAt"));
+            case START_DATETIME_DESC -> Sort.by(Sort.Order.desc("startDatetime"), Sort.Order.desc("createdAt"));
+            case DUE_DATETIME_ASC -> Sort.by(Sort.Order.asc("dueDatetime"), Sort.Order.desc("createdAt"));
+            case DUE_DATETIME_DESC -> Sort.by(Sort.Order.desc("dueDatetime"), Sort.Order.desc("createdAt"));
+        };
+    }
+
+    public Sort createSort(TaskWithFileObjectsSortType sortType) {
+        return switch (sortType) {
+            case CREATED_AT_ASC -> Sort.by(Sort.Order.asc("createdAt"));
+            case CREATED_AT_DESC -> Sort.by(Sort.Order.desc("createdAt"));
+            case TITLE_ASC -> Sort.by(Sort.Order.asc("title"), Sort.Order.desc("createdAt"));
+            case TITLE_DESC -> Sort.by(Sort.Order.desc("title"), Sort.Order.desc("createdAt"));
+            case START_DATETIME_ASC -> Sort.by(Sort.Order.asc("startDatetime"), Sort.Order.desc("createdAt"));
+            case START_DATETIME_DESC -> Sort.by(Sort.Order.desc("startDatetime"), Sort.Order.desc("createdAt"));
+            case DUE_DATETIME_ASC -> Sort.by(Sort.Order.asc("dueDatetime"), Sort.Order.desc("createdAt"));
+            case DUE_DATETIME_DESC -> Sort.by(Sort.Order.desc("dueDatetime"), Sort.Order.desc("createdAt"));
+        };
+    }
+
+    public Sort createSort(FileObjectOnTaskSortType sortType) {
+        return switch (sortType) {
+            case ADD_AT_ASC -> Sort.by(Sort.Order.asc("createdAt"));
+            case ADD_AT_DESC -> Sort.by(Sort.Order.desc("createdAt"));
+        };
+    }
+
+    public Sort createSort(TaskOnFileObjectSortType sortType) {
+        return switch (sortType) {
+            case ADD_AT_ASC -> Sort.by(Sort.Order.asc("createdAt"));
+            case ADD_AT_DESC -> Sort.by(Sort.Order.desc("createdAt"));
+            case TITLE_ASC -> Sort.by(Sort.Order.asc("task.title"));
+            case TITLE_DESC -> Sort.by(Sort.Order.desc("task.title"));
+            case CREATED_AT_ASC -> Sort.by(Sort.Order.asc("task.createdAt"));
+            case CREATED_AT_DESC -> Sort.by(Sort.Order.desc("task.createdAt"));
+            case DUE_DATETIME_ASC -> Sort.by(Sort.Order.asc("task.dueDatetime"));
+            case DUE_DATETIME_DESC -> Sort.by(Sort.Order.desc("task.dueDatetime"));
+            case START_DATETIME_ASC -> Sort.by(Sort.Order.asc("task.startDatetime"));
+            case START_DATETIME_DESC -> Sort.by(Sort.Order.desc("task.startDatetime"));
+        };
     }
 }

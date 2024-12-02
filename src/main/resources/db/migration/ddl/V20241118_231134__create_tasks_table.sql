@@ -7,7 +7,7 @@ CREATE TABLE tasks (
         description TEXT NOT NULL,
         status VARCHAR(50) NOT NULL,
         start_datetime TIMESTAMP NOT NULL,
-        duw_datetime TIMESTAMP NOT NULL,
+        due_datetime TIMESTAMP NOT NULL,
         created_at TIMESTAMP NOT NULL,
         created_by varchar(50) NOT NULL,
         updated_at TIMESTAMP DEFAULT NULL,
