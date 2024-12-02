@@ -324,7 +324,7 @@ public class TaskService extends BaseService {
         taskRepository.save(existingTask);
     }
 
-    public Sort createSort(TaskSortType sortType) {
+    private Sort createSort(TaskSortType sortType) {
         return switch (sortType) {
             case CREATED_AT_ASC -> Sort.by(Sort.Order.asc("createdAt"));
             case CREATED_AT_DESC -> Sort.by(Sort.Order.desc("createdAt"));
@@ -337,7 +337,7 @@ public class TaskService extends BaseService {
         };
     }
 
-    public Sort createSort(TaskWithFileObjectsSortType sortType) {
+    private Sort createSort(TaskWithFileObjectsSortType sortType) {
         return switch (sortType) {
             case CREATED_AT_ASC -> Sort.by(Sort.Order.asc("createdAt"));
             case CREATED_AT_DESC -> Sort.by(Sort.Order.desc("createdAt"));
@@ -350,14 +350,14 @@ public class TaskService extends BaseService {
         };
     }
 
-    public Sort createSort(FileObjectOnTaskSortType sortType) {
+    private Sort createSort(FileObjectOnTaskSortType sortType) {
         return switch (sortType) {
             case ADD_AT_ASC -> Sort.by(Sort.Order.asc("createdAt"));
             case ADD_AT_DESC -> Sort.by(Sort.Order.desc("createdAt"));
         };
     }
 
-    public Sort createSort(TaskOnFileObjectSortType sortType) {
+    private Sort createSort(TaskOnFileObjectSortType sortType) {
         return switch (sortType) {
             case ADD_AT_ASC -> Sort.by(Sort.Order.asc("createdAt"));
             case ADD_AT_DESC -> Sort.by(Sort.Order.desc("createdAt"));
