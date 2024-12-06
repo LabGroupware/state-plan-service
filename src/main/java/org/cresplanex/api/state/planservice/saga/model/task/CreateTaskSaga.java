@@ -10,6 +10,7 @@ import org.cresplanex.api.state.common.saga.data.plan.CreateTaskResultData;
 import org.cresplanex.api.state.common.saga.local.plan.InvalidDueDateTimeException;
 import org.cresplanex.api.state.common.saga.local.plan.InvalidStartDateTimeException;
 import org.cresplanex.api.state.common.saga.local.plan.StartTimeMustBeEarlierDueTimeException;
+import org.cresplanex.api.state.common.saga.local.plan.WillAddedTaskAttachmentsDuplicatedException;
 import org.cresplanex.api.state.common.saga.model.SagaModel;
 import org.cresplanex.api.state.common.saga.reply.plan.CreateTaskAndAttachInitialFIleObjectsReply;
 import org.cresplanex.api.state.common.saga.reply.storage.FileObjectExistValidateReply;
@@ -51,6 +52,7 @@ public class CreateTaskSaga extends SagaModel<
                 .onException(InvalidStartDateTimeException.class, this::failureLocalExceptionPublish)
                 .onException(InvalidDueDateTimeException.class, this::failureLocalExceptionPublish)
                 .onException(StartTimeMustBeEarlierDueTimeException.class, this::failureLocalExceptionPublish)
+                .onException(WillAddedTaskAttachmentsDuplicatedException.class, this::failureLocalExceptionPublish)
                 .step()
                 .invokeParticipant(
                         userProfileService.userExistValidate,
@@ -159,7 +161,9 @@ public class CreateTaskSaga extends SagaModel<
                 state.getInitialData().getTitle(),
                 state.getInitialData().getDescription(),
                 state.getInitialData().getStartDatetime(),
-                state.getInitialData().getDueDatetime()
+                state.getInitialData().getDueDatetime(),
+                state.getInitialData().getAttachmentFileObjects()
+                        .stream().map(CreateTaskSagaState.InitialData.FileObject::getFileObjectId).toList()
         );
 
         this.localProcessedEventPublish(

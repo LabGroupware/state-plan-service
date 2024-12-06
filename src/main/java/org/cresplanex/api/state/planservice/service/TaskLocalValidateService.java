@@ -7,6 +7,7 @@ import org.cresplanex.api.state.common.saga.local.LocalException;
 import org.cresplanex.api.state.common.saga.local.plan.InvalidDueDateTimeException;
 import org.cresplanex.api.state.common.saga.local.plan.InvalidStartDateTimeException;
 import org.cresplanex.api.state.common.saga.local.plan.StartTimeMustBeEarlierDueTimeException;
+import org.cresplanex.api.state.common.saga.local.plan.WillAddedTaskAttachmentsDuplicatedException;
 import org.cresplanex.api.state.common.service.BaseService;
 import org.cresplanex.api.state.planservice.entity.TaskAttachmentEntity;
 import org.cresplanex.api.state.planservice.entity.TaskEntity;
@@ -38,7 +39,9 @@ public class TaskLocalValidateService extends BaseService {
             String title,
             String description,
             String startDatetime,
-            String dueDatetime)
+            String dueDatetime,
+            List<String> taskAttachmentIds
+    )
             throws InvalidStartDateTimeException, InvalidDueDateTimeException, StartTimeMustBeEarlierDueTimeException {
         LocalDateTime startTimestamp;
         try {
@@ -54,6 +57,10 @@ public class TaskLocalValidateService extends BaseService {
         }
         if (startTimestamp.isAfter(dueTimestamp)) {
             throw new StartTimeMustBeEarlierDueTimeException(startTimestamp, dueTimestamp);
+        }
+
+        if (taskAttachmentIds.size() != taskAttachmentIds.stream().distinct().count()) {
+            throw new WillAddedTaskAttachmentsDuplicatedException(taskAttachmentIds);
         }
     }
 

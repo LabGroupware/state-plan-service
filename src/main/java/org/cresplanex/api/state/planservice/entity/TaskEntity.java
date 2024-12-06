@@ -53,7 +53,6 @@ public class TaskEntity extends BaseEntity<TaskEntity> {
     private String title;
 
     @Column(name = "description", nullable = false)
-    @Lob
     private String description;
 
     @Column(name = "status", length = 50, nullable = false)
