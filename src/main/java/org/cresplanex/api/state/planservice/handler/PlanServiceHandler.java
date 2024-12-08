@@ -312,14 +312,14 @@ public class PlanServiceHandler extends PlanServiceGrpc.PlanServiceImplBase {
 
     @Override
     public void createTask(CreateTaskRequest request, StreamObserver<CreateTaskResponse> responseObserver) {
+
+
         String operatorId = request.getOperatorId();
         TaskEntity task = new TaskEntity();
         task.setTeamId(request.getTeamId());
         task.setChargeUserId(request.getChargeUserId());
         task.setTitle(request.getTitle());
         task.setDescription(request.getDescription());
-        task.setStartDatetime(LocalDateTime.parse(request.getStartDatetime(), DateTimeFormatter.ISO_DATE_TIME));
-        task.setDueDatetime(LocalDateTime.parse(request.getDueDatetime(), DateTimeFormatter.ISO_DATE_TIME));
         List<TaskAttachmentEntity> attachmentEntities = request.getAttachmentsList().stream()
                 .map(attachment -> {
                     TaskAttachmentEntity attachmentEntity = new TaskAttachmentEntity();
@@ -328,7 +328,7 @@ public class PlanServiceHandler extends PlanServiceGrpc.PlanServiceImplBase {
                 })
                 .toList();
 
-        String jobId = taskService.beginCreate(operatorId, task, attachmentEntities);
+        String jobId = taskService.beginCreate(operatorId, task, attachmentEntities, request.getStartDatetime(), request.getDueDatetime());
         CreateTaskResponse response = CreateTaskResponse.newBuilder()
                 .setJobId(jobId)
                 .build();

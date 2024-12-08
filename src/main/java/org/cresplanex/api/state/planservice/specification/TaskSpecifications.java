@@ -1,64 +1,116 @@
 package org.cresplanex.api.state.planservice.specification;
 
+import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
 import org.cresplanex.api.state.planservice.entity.TaskEntity;
 import org.cresplanex.api.state.planservice.filter.task.*;
+import org.hibernate.type.descriptor.java.StringJavaType;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 public class TaskSpecifications {
 
+    public static Specification<TaskEntity> whereTaskIds(Iterable<String> taskIds) {
+        List<String> taskIdList = new ArrayList<>();
+        taskIds.forEach(taskId -> {
+            taskIdList.add(new StringJavaType().wrap(taskId, null));
+        });
+
+        return (root, query, criteriaBuilder) -> {
+            Predicate predicate = criteriaBuilder.conjunction();
+            predicate = criteriaBuilder.and(predicate, root.get("taskId").in(taskIdList));
+            return predicate;
+        };
+    }
+
+    public static Specification<TaskEntity> fetchTaskAttachments() {
+        return (root, query, criteriaBuilder) -> {
+            if (query == null) {
+                return null;
+            }
+            if (Long.class != query.getResultType()) {
+                root.fetch("taskAttachments", JoinType.LEFT);
+                query.distinct(true);
+                return null;
+            }
+
+            return null;
+        };
+    }
+
     public static Specification<TaskEntity> withTeamFilter(TeamFilter teamFilter) {
+        List<String> teamList = new ArrayList<>();
+        if (teamFilter != null && teamFilter.isValid()) {
+            teamFilter.getTeamIds().forEach(team -> {
+                teamList.add(new StringJavaType().wrap(team, null));
+            });
+        }
+
         return (root, query, criteriaBuilder) -> {
             Predicate predicate = criteriaBuilder.conjunction();
             if (teamFilter != null && teamFilter.isValid()) {
-                if (teamFilter.getTeamIds() != null && !teamFilter.getTeamIds().isEmpty()) {
-                    predicate = criteriaBuilder.and(predicate, root.get("teamId").in(teamFilter.getTeamIds()));
-                }
+                predicate = criteriaBuilder.and(predicate, root.get("teamId").in(teamList));
             }
             return predicate;
         };
     }
 
     public static Specification<TaskEntity> withStatusFilter(StatusFilter statusFilter) {
+        List<String> statusList = new ArrayList<>();
+        if (statusFilter != null && statusFilter.isValid()) {
+            statusFilter.getStatuses().forEach(status -> {
+                statusList.add(new StringJavaType().wrap(status, null));
+            });
+        }
+
         return (root, query, criteriaBuilder) -> {
             Predicate predicate = criteriaBuilder.conjunction();
             if (statusFilter != null && statusFilter.isValid()) {
-                if (statusFilter.getStatuses() != null && !statusFilter.getStatuses().isEmpty()) {
-                    predicate = criteriaBuilder.and(predicate, root.get("status").in(statusFilter.getStatuses()));
-                }
+                predicate = criteriaBuilder.and(predicate, root.get("status").in(statusList));
             }
             return predicate;
         };
     }
 
     public static Specification<TaskEntity> withChargeUserFilter(ChargeUserFilter chargeUserFilter) {
+        List<String> chargeUserList = new ArrayList<>();
+        if (chargeUserFilter != null && chargeUserFilter.isValid()) {
+            chargeUserFilter.getChargeUserIds().forEach(chargeUser -> {
+                chargeUserList.add(new StringJavaType().wrap(chargeUser, null));
+            });
+        }
+
         return (root, query, criteriaBuilder) -> {
             Predicate predicate = criteriaBuilder.conjunction();
             if (chargeUserFilter != null && chargeUserFilter.isValid()) {
-                if (chargeUserFilter.getChargeUserIds() != null && !chargeUserFilter.getChargeUserIds().isEmpty()) {
-                    predicate = criteriaBuilder.and(predicate, root.get("chargeUserId").in(chargeUserFilter.getChargeUserIds()));
-                }
+                predicate = criteriaBuilder.and(predicate, root.get("chargeUserId").in(chargeUserList));
             }
             return predicate;
         };
     }
 
     public static Specification<TaskEntity> withAttachmentFileObjectsFilter(FileObjectsFilter fileObjectsFilter) {
+        List<String> fileObjectList = new ArrayList<>();
+        if (fileObjectsFilter != null && fileObjectsFilter.isValid()) {
+            fileObjectsFilter.getFileObjectIds().forEach(fileObject -> {
+                fileObjectList.add(new StringJavaType().wrap(fileObject, null));
+            });
+        }
+
         return (root, query, criteriaBuilder) -> {
             Predicate predicate = criteriaBuilder.conjunction();
             if (fileObjectsFilter != null && fileObjectsFilter.isValid()) {
-                if (fileObjectsFilter.getFileObjectIds() != null && !fileObjectsFilter.getFileObjectIds().isEmpty()) {
-                    if (!fileObjectsFilter.isAny()) {
-                        // all
-                        for (String fileObjectId : fileObjectsFilter.getFileObjectIds()) {
-                            predicate = criteriaBuilder.and(predicate, criteriaBuilder.isMember(fileObjectId, root.get("taskAttachments")));
-                        }
-                    } else {
-                        // any
-                        predicate = criteriaBuilder.and(predicate, root.get("taskAttachments").get("fileObjectId").in(fileObjectsFilter.getFileObjectIds()));
+                if (!fileObjectsFilter.isAny()) {
+                    // all
+                    for (String fileObjectId : fileObjectList) {
+                        predicate = criteriaBuilder.and(predicate, criteriaBuilder.isMember(fileObjectId, root.get("taskAttachments")));
                     }
+                } else {
+                    // any
+                    predicate = criteriaBuilder.and(predicate, root.get("taskAttachments").get("fileObjectId").in(fileObjectList));
                 }
             }
             return predicate;

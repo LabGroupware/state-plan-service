@@ -61,7 +61,7 @@ public class TaskEntity extends BaseEntity<TaskEntity> {
     @Column(name = "start_datetime", nullable = false)
     private LocalDateTime startDatetime;
 
-    @Column(name = "duw_datetime", nullable = false)
+    @Column(name = "due_datetime", nullable = false)
     private LocalDateTime dueDatetime;
 
     @OneToMany(mappedBy = "task", fetch = FetchType.LAZY,

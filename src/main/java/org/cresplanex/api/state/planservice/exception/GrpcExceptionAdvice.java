@@ -2,9 +2,11 @@ package org.cresplanex.api.state.planservice.exception;
 
 import build.buf.gen.plan.v1.*;
 import io.grpc.Status;
+import lombok.extern.slf4j.Slf4j;
 import net.devh.boot.grpc.server.advice.GrpcAdvice;
 import net.devh.boot.grpc.server.advice.GrpcExceptionHandler;
 
+@Slf4j
 @GrpcAdvice
 public class GrpcExceptionAdvice {
 
@@ -55,6 +57,7 @@ public class GrpcExceptionAdvice {
 
     @GrpcExceptionHandler
     public Status handleInternal(Throwable e) {
+         log.error("Internal error", e);
          PlanServiceInternalError.Builder descriptionBuilder =
                  PlanServiceInternalError.newBuilder()
                          .setMeta(PlanServiceErrorMeta.newBuilder()

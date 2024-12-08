@@ -20,8 +20,10 @@ import org.cresplanex.api.state.planservice.saga.model.task.UpdateStatusTaskSaga
 import org.cresplanex.api.state.planservice.saga.model.task.CreateTaskSaga;
 import org.cresplanex.api.state.planservice.saga.state.task.UpdateStatusTaskSagaState;
 import org.cresplanex.api.state.planservice.saga.state.task.CreateTaskSagaState;
+import org.cresplanex.api.state.planservice.specification.TaskAttachmentSpecifications;
 import org.cresplanex.api.state.planservice.specification.TaskSpecifications;
 import org.cresplanex.core.saga.orchestration.SagaInstanceFactory;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -99,14 +101,14 @@ public class TaskService extends BaseService {
             default -> Pageable.unpaged(sort);
         };
 
-        List<TaskEntity> data = taskRepository.findList(spec, pageable);
+        Page<TaskEntity> data = taskRepository.findAll(spec, pageable);
 
         int count = 0;
         if (withCount){
-            count = taskRepository.countList(spec);
+            count = (int) data.getTotalElements();
         }
         return new ListEntityWithCount<>(
-                data,
+                data.getContent(),
                 count
         );
     }
@@ -133,6 +135,7 @@ public class TaskService extends BaseService {
                         .and(TaskSpecifications.withAttachmentFileObjectsFilter(fileObjectsFilter))
                         .and(TaskSpecifications.withStartDatetimeFilter(startDatetimeFilter))
                         .and(TaskSpecifications.withDueDatetimeFilter(dueDatetimeFilter))
+                        .and(TaskSpecifications.fetchTaskAttachments())
         );
 
         Sort sort = createSort(sortType);
@@ -143,14 +146,15 @@ public class TaskService extends BaseService {
             default -> Pageable.unpaged(sort);
         };
 
-        List<TaskEntity> data = taskRepository.findListWithAttachments(spec, pageable);
+        Page<TaskEntity> data = taskRepository.findAll(spec, pageable);
 
         int count = 0;
         if (withCount){
-            count = taskRepository.countList(spec);
+            count = (int) data.getTotalElements();
         }
+
         return new ListEntityWithCount<>(
-                data,
+                data.getContent(),
                 count
         );
     }
@@ -165,8 +169,9 @@ public class TaskService extends BaseService {
             FileObjectOnTaskSortType sortType,
             boolean withCount
     ) {
-        Specification<TaskAttachmentEntity> spec = (root, query, cb) ->
-                cb.equal(root.get("task").get("taskId"), taskId);
+        Specification<TaskAttachmentEntity> spec = Specification.where(
+                TaskAttachmentSpecifications.whereTaskId(taskId)
+        );
 
         Sort sort = createSort(sortType);
 
@@ -176,14 +181,14 @@ public class TaskService extends BaseService {
             default -> Pageable.unpaged(sort);
         };
 
-        List<TaskAttachmentEntity> data = taskAttachmentRepository.findList(spec, pageable);
+        Page<TaskAttachmentEntity> data = taskAttachmentRepository.findAll(spec, pageable);
 
         int count = 0;
         if (withCount){
-            count = taskAttachmentRepository.countList(spec);
+            count = (int) data.getTotalElements();
         }
         return new ListEntityWithCount<>(
-                data,
+                data.getContent(),
                 count
         );
     }
@@ -198,8 +203,10 @@ public class TaskService extends BaseService {
             TaskOnFileObjectSortType sortType,
             boolean withCount
     ) {
-        Specification<TaskAttachmentEntity> spec = (root, query, cb) ->
-                cb.equal(root.get("fileObjectId"), fileObjectId);
+        Specification<TaskAttachmentEntity> spec = Specification.where(
+                TaskAttachmentSpecifications.whereFileObjectId(fileObjectId)
+                        .and(TaskAttachmentSpecifications.fetchTask())
+        );
 
         Sort sort = createSort(sortType);
 
@@ -209,14 +216,14 @@ public class TaskService extends BaseService {
             default -> Pageable.unpaged(sort);
         };
 
-        List<TaskAttachmentEntity> data = taskAttachmentRepository.findList(spec, pageable);
+        Page<TaskAttachmentEntity> data = taskAttachmentRepository.findAll(spec, pageable);
 
         int count = 0;
         if (withCount){
-            count = taskAttachmentRepository.countList(spec);
+            count = (int) data.getTotalElements();
         }
         return new ListEntityWithCount<>(
-                data,
+                data.getContent(),
                 count
         );
     }
@@ -226,9 +233,11 @@ public class TaskService extends BaseService {
             List<String> taskIds,
             TaskSortType sortType
     ) {
-        Specification<TaskEntity> spec = (root, query, cb) ->
-                root.get("taskId").in(taskIds);
-        return taskRepository.findList(spec, Pageable.unpaged(createSort(sortType)));
+        Specification<TaskEntity> spec = Specification.where(
+                TaskSpecifications.whereTaskIds(taskIds)
+        );
+
+        return taskRepository.findAll(spec, createSort(sortType));
     }
 
     @Transactional(readOnly = true)
@@ -236,20 +245,29 @@ public class TaskService extends BaseService {
             List<String> taskIds,
             TaskWithFileObjectsSortType sortType
     ) {
-        Specification<TaskEntity> spec = (root, query, cb) ->
-                root.get("taskId").in(taskIds);
-        return taskRepository.findListWithAttachments(spec, Pageable.unpaged(createSort(sortType)));
+        Specification<TaskEntity> spec = Specification.where(
+                TaskSpecifications.whereTaskIds(taskIds)
+                        .and(TaskSpecifications.fetchTaskAttachments())
+        );
+
+        return taskRepository.findAll(spec, createSort(sortType));
     }
 
     @Transactional
-    public String beginCreate(String operatorId, TaskEntity task, List<TaskAttachmentEntity> attachment) {
+    public String beginCreate(
+            String operatorId,
+            TaskEntity task,
+            List<TaskAttachmentEntity> attachment,
+            String startDatetime,
+            String dueDatetime
+    ) {
         CreateTaskSagaState.InitialData initialData = CreateTaskSagaState.InitialData.builder()
                 .teamId(task.getTeamId())
                 .chargeUserId(task.getChargeUserId())
                 .title(task.getTitle())
                 .description(task.getDescription())
-                .startDatetime(task.getStartDatetime().format(DateTimeFormatter.ISO_DATE_TIME))
-                .dueDatetime(task.getDueDatetime().format(DateTimeFormatter.ISO_DATE_TIME))
+                .startDatetime(startDatetime)
+                .dueDatetime(dueDatetime)
                 .attachmentFileObjects(attachment.stream().map(object -> CreateTaskSagaState.InitialData.FileObject.builder()
                         .fileObjectId(object.getFileObjectId())
                         .build())
@@ -312,10 +330,10 @@ public class TaskService extends BaseService {
     }
 
     public EntityWithPrevious<TaskEntity> update(String operatorId, String taskId, String status) {
-        TaskEntity existingTask = internalFindById(taskId);
-        TaskEntity updatedTask = existingTask.clone();
-        updatedTask.setStatus(status);
-        return new EntityWithPrevious<>(taskRepository.save(updatedTask), existingTask);
+        TaskEntity newTask = internalFindById(taskId);
+        TaskEntity existingTask = newTask.clone();
+        newTask.setStatus(status);
+        return new EntityWithPrevious<>(taskRepository.save(newTask), existingTask);
     }
 
     public void undoUpdate(String taskId, String prevStatus) {
