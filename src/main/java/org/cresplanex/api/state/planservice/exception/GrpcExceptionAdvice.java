@@ -58,11 +58,14 @@ public class GrpcExceptionAdvice {
     @GrpcExceptionHandler
     public Status handleInternal(Throwable e) {
          log.error("Internal error", e);
+
+        String message = e.getMessage() != null ? e.getMessage() : "Unknown error occurred";
+
          PlanServiceInternalError.Builder descriptionBuilder =
                  PlanServiceInternalError.newBuilder()
                          .setMeta(PlanServiceErrorMeta.newBuilder()
                                  .setCode(PlanServiceErrorCode.PLAN_SERVICE_ERROR_CODE_INTERNAL)
-                                 .setMessage(e.getMessage())
+                                 .setMessage(message)
                                  .build());
 
          return Status.INTERNAL
