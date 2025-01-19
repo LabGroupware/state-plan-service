@@ -5,6 +5,7 @@ import io.grpc.Status;
 import lombok.extern.slf4j.Slf4j;
 import net.devh.boot.grpc.server.advice.GrpcAdvice;
 import net.devh.boot.grpc.server.advice.GrpcExceptionHandler;
+import org.cresplanex.api.state.common.saga.local.plan.NotFoundTaskException;
 
 @Slf4j
 @GrpcAdvice
@@ -42,6 +43,22 @@ public class GrpcExceptionAdvice {
                         .setTaskId(e.getAggregateId());
                 break;
         }
+
+        return Status.NOT_FOUND
+                .withDescription(descriptionBuilder.build().toString())
+                .withCause(e);
+    }
+
+    @GrpcExceptionHandler(NotFoundTaskException.class)
+    public Status handleNotFoundTaskException(NotFoundTaskException e) {
+        PlanServiceTaskNotFoundError.Builder descriptionBuilder =
+                PlanServiceTaskNotFoundError.newBuilder()
+                        .setMeta(
+                                PlanServiceErrorMeta.newBuilder()
+                                        .setCode(PlanServiceErrorCode.PLAN_SERVICE_ERROR_CODE_TASK_NOT_FOUND)
+                                        .setMessage(e.getMessage())
+                                        .build()
+                        );
 
         return Status.NOT_FOUND
                 .withDescription(descriptionBuilder.build().toString())
